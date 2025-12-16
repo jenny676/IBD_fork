@@ -9,7 +9,29 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd.gradcheck import zero_gradients
+# compat for old zero_gradients (removed from newer PyTorch)
+try:
+    from torch.autograd.gradcheck import zero_gradients
+except Exception:
+    # define a small compatible version (zeros .grad for tensors or iterables)
+    def zero_gradients(x):
+        import torch
+        # single tensor
+        if isinstance(x, torch.Tensor):
+            if x.grad is not None:
+                # detach then zero in-place (same semantics as old helper)
+                x.grad.detach_()
+                x.grad.zero_()
+        # iterable of tensors / nested structures
+        elif isinstance(x, (list, tuple, set)):
+            for elem in x:
+                zero_gradients(elem)
+        # dict values
+        elif isinstance(x, dict):
+            for v in x.values():
+                zero_gradients(v)
+        # otherwise do nothing
+
 from utils import label_smoothing, one_hot_tensor,softCrossEntropy
 import torchvision
 import math
@@ -260,5 +282,6 @@ class Sample(nn.Module):
     def forward(self, g_s, bs):
         g_s = torch.stack([self.sample(f_s.pow(2).mean(1, keepdim=True)).view(bs, -1) for f_s in g_s], dim=1)
         return g_s
+
 
 

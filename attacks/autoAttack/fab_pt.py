@@ -13,7 +13,28 @@ from __future__ import unicode_literals
 import time
 
 import torch
-from torch.autograd.gradcheck import zero_gradients
+# compat for old zero_gradients (removed from newer PyTorch)
+try:
+    from torch.autograd.gradcheck import zero_gradients
+except Exception:
+    # define a small compatible version (zeros .grad for tensors or iterables)
+    def zero_gradients(x):
+        import torch
+        # single tensor
+        if isinstance(x, torch.Tensor):
+            if x.grad is not None:
+                # detach then zero in-place (same semantics as old helper)
+                x.grad.detach_()
+                x.grad.zero_()
+        # iterable of tensors / nested structures
+        elif isinstance(x, (list, tuple, set)):
+            for elem in x:
+                zero_gradients(elem)
+        # dict values
+        elif isinstance(x, dict):
+            for v in x.values():
+                zero_gradients(v)
+        # otherwise do nothing
 
 from .fab_base import FABAttack
 

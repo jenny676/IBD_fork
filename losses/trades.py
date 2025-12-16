@@ -90,3 +90,32 @@ def trades_loss(model,
     loss_trades = loss_natural + beta * loss_robust
 
     return logits_nat, logits_adv, loss_trades, loss_natural, loss_robust 
+
+# -------------------------------------------------
+# Extra losses required by TOPO_module (smoke-test)
+# -------------------------------------------------
+
+def pearson_loss(pred, target, eps=1e-8):
+    """
+    1 - Pearson correlation coefficient (averaged over batch)
+    """
+    p = pred.view(pred.size(0), -1).float()
+    t = target.view(target.size(0), -1).float()
+
+    p = p - p.mean(dim=1, keepdim=True)
+    t = t - t.mean(dim=1, keepdim=True)
+
+    num = (p * t).sum(dim=1)
+    den = (p.norm(dim=1) * t.norm(dim=1)).clamp(min=eps)
+
+    return (1.0 - num / den).mean()
+
+
+def sinkhorn_loss_joint_IPOT(x, y, **kwargs):
+    """
+    Placeholder Sinkhorn/IPOT loss for smoke tests.
+    Uses MSE as a stable surrogate.
+    """
+    x = x.view(x.size(0), -1).float()
+    y = y.view(y.size(0), -1).float()
+    return F.mse_loss(x, y)
